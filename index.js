@@ -107,4 +107,16 @@ function createBot() {
   });
 }
 
+const express = require("express");
+const app = express();
+
+// Rute Express
+app.get("/", (_, res) => res.send("Botul e online!"));
+
+// PORNEȘTE SERVERUL EXPRESS — acesta trebuie să vină aici
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Serverul web rulează!");
+});
+
+// ABIA AICI: creezi botul
 createBot();
