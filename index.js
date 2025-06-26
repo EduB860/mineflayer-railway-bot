@@ -48,7 +48,7 @@ function createBot() {
     if (msg === "stop") { bot.chat("Stopping."); stopGuarding(); }
   });
 
-  bot.on("physicTick", () => {
+  bot.on('physicsTick', () => {
     if (guardPos && !bot.pvp.target) {
       const e = bot.nearestEntity(e => e.type === "mob" && e.position.distanceTo(bot.entity.position) < 16 && e.mobType !== "Armor Stand");
       if (e) bot.pvp.attack(e);
