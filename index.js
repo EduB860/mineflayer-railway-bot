@@ -5,35 +5,32 @@ const pvp = require("mineflayer-pvp").plugin;
 const { pathfinder, Movements, goals } = require("mineflayer-pathfinder");
 const armorManager = require("mineflayer-armor-manager");
 const AutoAuth = require("mineflayer-auto-auth");
+
 const app = express();
+app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
-
-app.get("/", (_, res) => res.send("Botul e pornit!"));
-app.listen(PORT, () => console.log(`Web server on ${PORT}`));
-
-// Anti-sleep auto-ping (UptimeRobot-friendly)
-setInterval(() => {
-  http.get("http://localhost:" + PORT);
-}, 280000); // la fiecare ~5 minute
+app.get("/", (_, res) => res.send("Botul e online!"));
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Web server listening on port", process.env.PORT || 3000);
+});
 
 let reconnectTimeout = 10000;
 
 function createBot() {
   const bot = mineflayer.createBot({
     host: "rokbedrock.falixsrv.me",
-    port: 36188,
     version: "1.16.5",
     username: "Bot",
+    port: 36188,
     plugins: [AutoAuth],
-    AutoAuth: "bot112022",
+    AutoAuth: "bot112022"
   });
 
   bot.loadPlugin(pvp);
   bot.loadPlugin(armorManager);
   bot.loadPlugin(pathfinder);
 
-  // Anti-AFK loop
+  // Anti-AFK (jump + forward)
   const antiAFK = setInterval(() => {
     if (!bot || !bot.entity) return;
     bot.setControlState("jump", true);
@@ -45,17 +42,20 @@ function createBot() {
     }, 500);
   }, 30000);
 
-  bot.on("chat", (username, message) => {
-    const player = bot.players[username]?.entity;
-    if (!player) return;
-    if (message === "guard") {
-      bot.chat("I will!");
-      guardArea(player.position);
-    }
-    if (message === "stop") {
-      bot.chat("I will stop!");
-      stopGuarding();
-    }
+  bot.on("playerCollect", (collector, itemDrop) => {
+    if (collector !== bot.entity) return;
+    setTimeout(() => {
+      const sword = bot.inventory.items().find(item => item.name.includes("sword"));
+      if (sword) bot.equip(sword, "hand");
+    }, 150);
+  });
+
+  bot.on("playerCollect", (collector, itemDrop) => {
+    if (collector !== bot.entity) return;
+    setTimeout(() => {
+      const shield = bot.inventory.items().find(item => item.name.includes("shield"));
+      if (shield) bot.equip(shield, "off-hand");
+    }, 250);
   });
 
   let guardPos = null;
@@ -77,19 +77,55 @@ function createBot() {
     bot.pathfinder.setGoal(new goals.GoalBlock(guardPos.x, guardPos.y, guardPos.z));
   }
 
+  bot.on("stoppedAttacking", () => {
+    if (guardPos) moveToGuardPos();
+  });
+
   bot.on("physicTick", () => {
-    if (guardPos && !bot.pvp.target) {
-      const filter = e =>
-        e.type === "mob" &&
-        e.position.distanceTo(bot.entity.position) < 16 &&
-        e.mobType !== "Armor Stand";
-      const entity = bot.nearestEntity(filter);
-      if (entity) bot.pvp.attack(entity);
+    if (bot.pvp.target || bot.pathfinder.isMoving()) return;
+    const entity = bot.nearestEntity();
+    if (entity) bot.lookAt(entity.position.offset(0, entity.height, 0));
+  });
+
+  bot.on("physicTick", () => {
+    if (!guardPos) return;
+    const filter = e =>
+      e.type === "mob" &&
+      e.position.distanceTo(bot.entity.position) < 16 &&
+      e.mobType !== "Armor Stand";
+    const entity = bot.nearestEntity(filter);
+    if (entity) bot.pvp.attack(entity);
+  });
+
+  bot.on("chat", (username, message) => {
+    const player = bot.players[username]?.entity;
+    if (!player) return;
+    if (message === "guard") {
+      bot.chat("I will!");
+      guardArea(player.position);
+    }
+    if (message === "stop") {
+      bot.chat("I will stop!");
+      stopGuarding();
     }
   });
 
+  bot.on("kicked", reason => {
+    console.log("Bot was kicked:", reason);
+  });
+
+  bot.on("error", err => {
+    console.error("Bot encountered an error:", err);
+    console.log(`Reconnecting in ${reconnectTimeout / 1000} seconds...`);
+    clearInterval(antiAFK);
+    setTimeout(() => {
+      createBot();
+      reconnectTimeout = Math.min(reconnectTimeout * 2, 60000);
+    }, reconnectTimeout);
+  });
+
   bot.on("end", () => {
-    console.log(`Bot disconnected. Reconnecting in ${reconnectTimeout / 1000}s`);
+    console.log(`Bot disconnected. Reconnecting in ${reconnectTimeout / 1000} seconds...`);
     clearInterval(antiAFK);
     setTimeout(() => {
       createBot();
@@ -101,22 +137,6 @@ function createBot() {
     reconnectTimeout = 10000;
     console.log("Bot spawned, reconnect timeout reset.");
   });
-
-  bot.on("error", err => {
-    console.log("Bot error:", err);
-  });
 }
 
-const express = require("express");
-const app = express();
-
-// Rute Express
-app.get("/", (_, res) => res.send("Botul e online!"));
-
-// PORNEȘTE SERVERUL EXPRESS — acesta trebuie să vină aici
-app.listen(process.env.PORT || 3000, () => {
-  console.log("Serverul web rulează!");
-});
-
-// ABIA AICI: creezi botul
 createBot();
