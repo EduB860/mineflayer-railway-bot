@@ -1,24 +1,16 @@
 {
-  "build": {
-    "env": {
-      "NODE_ENV": "production"
-    }
-  },
-  "deploy": {
-    "startCommand": "node index.js",
-    "healthcheckPath": "/",
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
-  },
   "services": [
     {
       "name": "minecraft-bot",
       "startCommand": "node index.js",
       "port": 3000,
-      "healthcheckPath": "/",
-      "protocol": "http"
+      "protocol": "http",
+      "healthcheckPath": "/"
     }
-  ]
+  ],
+  "deploy": {
+    "startCommand": "node index.js",
+    "healthcheckPath": "/",
+    "restartPolicyType": "ON_FAILURE"
+  }
 }
-
-
