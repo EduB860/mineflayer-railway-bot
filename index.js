@@ -14,8 +14,8 @@ let reconnectTimeout = 10000;
 
 function createBot() {
   const bot = mineflayer.createBot({
-    host: "rokbedrock.falixsrv.me",
-    port: 36188,
+    host: "FastSMP.aternos.me",
+    port: 60440,
     username: "Bot",
     version: "1.16.5",
     plugins: [AutoAuth],
